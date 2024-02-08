@@ -25,25 +25,28 @@ app.post("/assistant", async (req, res, next) => {
   }
 
   try {
-    const thread = await openai.beta.threads.create();
-    await openai.beta.threads.messages.create(thread.id, {
-      role: "user",
-      content: question,
-    });
+    const createThread = await openai.beta.threads.create();
+    await openai.beta.threads.messages.create(
+      createThread.id,
+      {
+        role: "user",
+        content: question,
+      }
+    );
 
     const myAssistant = await openai.beta.assistants.retrieve(assistant);
 
-    let run = await openai.beta.threads.runs.create(thread.id, {
+    let run = await openai.beta.threads.runs.create(createThread.id, {
       assistant_id: myAssistant.id,
     });
 
     while (run.status !== "completed") {
       console.log("🚀 Loading...");
       await new Promise((resolve) => setTimeout(resolve, 8000));
-      run = await openai.beta.threads.runs.retrieve(thread.id, run.id);
+      run = await openai.beta.threads.runs.retrieve(createThread.id, run.id);
     }
 
-    const messages = await openai.beta.threads.messages.list(thread.id);
+    const messages = await openai.beta.threads.messages.list(createThread.id);
 
     const cleanedResponse = messages.data[0].content[0].text.value.replace(
       /\【\d+\†source\】/g,
@@ -51,9 +54,7 @@ app.post("/assistant", async (req, res, next) => {
     );
     res.json({
       response: cleanedResponse,
-      messageThread: messages.body.data,
       status: messages.response.status,
-      options: messages.options,
     });
   } catch (error) {
     next(error);
